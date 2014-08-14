@@ -3,18 +3,138 @@
 
 ## Loading and preprocessing the data
 
+Set the working directory and read in the data:
+```{r}
+setwd("~/Documents/Coursera - Data Science Specialization/Part 5 - Reproducible Research/RepData_PeerAssessment1")
+activity <- read.csv("activity.csv")
+```
 
+
+Load dplyr and ggplot2 packages:
+```{r}
+library("dplyr", lib.loc="/Library/Frameworks/R.framework/Versions/3.0/Resources/library")
+```
+```{r}
+library("ggplot2", lib.loc="/Library/Frameworks/R.framework/Versions/3.0/Resources/library")
+```
 
 ## What is mean total number of steps taken per day?
 
+Use dplyr to find total number of steps taken per day:
+```{r}
+daily <- group_by(activity,date) 
+daily2 <- summarise(daily, dailysteps = sum(steps, na.rm=T))
+daily2$dailysteps <- as.numeric(as.character(daily2$dailysteps))
+```
+
+Histogram plot of total number of steps taken each day:
+```{r}
+ggplot(daily2, aes(x=dailysteps)) + 
+    geom_histogram(binwidth = 500, colour="black", fill="white") +
+    labs(title="Total Number of Steps Per Day", x="Total Daily Steps") +
+    geom_vline(aes(xintercept=mean(dailysteps)),
+               color="blue", linetype="dashed") +
+    geom_vline(aes(xintercept=median(dailysteps)),
+               color="red", linetype="dashed")
+```
+
+2. Calculate and report the mean and median total number of steps taken per day
+
+Mean Total Number of Steps Per Day
+```{r}
+sum(activity$steps,na.rm=T)/61
+```
+
+Median Number of Steps Per Day
+```{r}
+median(daily2$dailysteps)
+```
 
 
 ## What is the average daily activity pattern?
+A time series of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+```{r}
+int <- group_by(activity,interval)
+int2 <- summarise(int,intavg = mean(steps,na.rm=TRUE))
 
+ggplot(int2,aes(x=interval,y=intavg)) + 
+    geom_bar(stat="identity") +
+    labs(title="Average Number of Steps Taken by 5-minute Interval,\nAveraged Across All Days", x="Interval",y="Average Steps by Interval")
+```
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+which.max(int2$intavg)
+int2[165,]
+```
 
 ## Imputing missing values
 
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+nrow(activity)-sum(complete.cases(activity))
+```
+
+Devise a strategy for filling in all of the missing values in the dataset. 
+
+Strategy: Take mean of each interval (object int2) and apply to each day
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r}
+# Reorder int2 object, mean of each interval
+df <- int2[order(int2$interval),]
+
+# Replicate the mean of each interval 61 times for the 61 days in activity
+df61 <- rep(df$intavg, times=61)
+
+newsteps <- cbind(activity,df61) # Bind new column to original data set
+newsteps$steps <- NULL
+newsteps$intsteps <- newsteps$df61
+newsteps$df61 <- NULL
+newsteps$intsteps <- as.numeric(as.character(newsteps$intsteps))
+head(newsteps)
+```
+
+Make a histogram of the total number of steps taken each day 
+
+Use dplyr to find total number of steps taken per day:
+```{r}
+new <- group_by(newsteps,date) 
+new2 <- summarise(new, newsteps = sum(intsteps, na.rm=T))
+new2$newsteps <- as.numeric(as.character(new2$newsteps ))
+```
+
+A histogram of the total number of steps taken each day
+```{r}
+ggplot(new2, aes(x=newsteps)) + 
+    geom_histogram(bindwidth=500, color="black", fill="white") +
+    labs(title="Total Number of Steps Per Day - New Step Calculation", 
+         x="Total Daily Steps") +
+    geom_vline(aes(xintercept=mean(newsteps)),
+               color="blue", linetype="dashed") +
+    geom_vline(aes(xintercept=median(newsteps)),
+               color="red", linetype="dashed") 
+```
+
+The new mean and median total number of steps taken per day
+```{r}
+# New Mean
+sum(new2$newsteps,na.rm=T)/61
+
+# New Median
+median(new2$newsteps)
+```
+
+Do these values differ from the estimates from the first part of the assignment? 
+```{r}
+# Yes. The original mean for total number of steps taken per day is 9354.23. The new mean is 10766.19. The new median is also 10766.19. The old median was 10395.
+```
+
+What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r}
+# About 1412 additional steps per day with the strategy I used to fill in the NAs.
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
